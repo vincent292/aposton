@@ -1,4 +1,5 @@
 import { buildScore, formatMatchDate, formatMatchTime } from '@/lib/quiniela/format';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   Match,
   MatchEvent,
@@ -73,6 +74,18 @@ type ApiFootballResponse = {
 
 type FixtureFetchResult = {
   fixtures: ApiFootballFixture[];
+  notice?: string | null;
+};
+
+type ApiFootballSyncSummary = {
+  ok: boolean;
+  skipped?: boolean;
+  checkedMatches: number;
+  fetchedFixtures: number;
+  updatedMatches: number;
+  finishedMatches: number;
+  recalculatedMatches: number;
+  errors: string[];
   notice?: string | null;
 };
 
@@ -200,6 +213,79 @@ function toAppStatus(statusShort: string) {
   }
 
   return 'scheduled';
+}
+
+function getActualWinner(homeScore: number | null, awayScore: number | null) {
+  if (homeScore === null || awayScore === null) {
+    return null;
+  }
+
+  if (homeScore > awayScore) {
+    return 'home';
+  }
+
+  if (awayScore > homeScore) {
+    return 'away';
+  }
+
+  return 'draw';
+}
+
+async function recalculateMatchSettlement(
+  supabase: SupabaseClient,
+  matchId: string,
+  fixture: ApiFootballFixture
+) {
+  const actualWinner = getActualWinner(fixture.homeScore, fixture.awayScore);
+
+  if (!actualWinner || fixture.homeScore === null || fixture.awayScore === null) {
+    return false;
+  }
+
+  const { data, error } = await supabase
+    .from('predictions')
+    .select('bet_mode, predicted_winner, predicted_home_score, predicted_away_score, stake_amount')
+    .eq('match_id', matchId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const predictions = data ?? [];
+  const winnerPool = predictions
+    .filter((prediction) => prediction.bet_mode === 'winner')
+    .reduce((sum, prediction) => sum + Number(prediction.stake_amount ?? 0), 0);
+  const exactScorePool = predictions
+    .filter((prediction) => prediction.bet_mode === 'exact_score')
+    .reduce((sum, prediction) => sum + Number(prediction.stake_amount ?? 0), 0);
+  const winnerHits = predictions.filter(
+    (prediction) =>
+      prediction.bet_mode === 'winner' && prediction.predicted_winner === actualWinner
+  ).length;
+  const exactScoreHits = predictions.filter(
+    (prediction) =>
+      prediction.bet_mode === 'exact_score' &&
+      Number(prediction.predicted_home_score) === fixture.homeScore &&
+      Number(prediction.predicted_away_score) === fixture.awayScore
+  ).length;
+
+  const { error: settlementError } = await supabase
+    .from('match_settlements')
+    .upsert({
+      match_id: matchId,
+      winner_pool: winnerPool,
+      exact_score_pool: exactScorePool,
+      winner_hits: winnerHits,
+      exact_score_hits: exactScoreHits,
+      total_predictions: predictions.length,
+      settled_at: new Date().toISOString(),
+    });
+
+  if (settlementError) {
+    throw new Error(settlementError.message);
+  }
+
+  return true;
 }
 
 function mapFixtureToMatch(fixture: ApiFootballFixture): Match {
@@ -350,6 +436,110 @@ export async function fetchWorldCupFixtures() {
   });
   const { fixtures } = await fetchWorldCupFixturesByParams(params);
   return fixtures;
+}
+
+export async function syncApiFootballLiveMatchesToSupabase(
+  supabase: SupabaseClient,
+  candidates: Array<{
+    id: string;
+    external_api_id: number | null;
+    home_team: string;
+    away_team: string;
+    source: string | null;
+  }>
+): Promise<ApiFootballSyncSummary> {
+  const summary: ApiFootballSyncSummary = {
+    ok: true,
+    checkedMatches: candidates.length,
+    fetchedFixtures: 0,
+    updatedMatches: 0,
+    finishedMatches: 0,
+    recalculatedMatches: 0,
+    errors: [],
+  };
+
+  if (!candidates.length) {
+    return {
+      ...summary,
+      skipped: true,
+      notice: 'No live or upcoming matches',
+    };
+  }
+
+  const params = new URLSearchParams({
+    league: String(WORLD_CUP_LEAGUE_ID),
+    season: String(WORLD_CUP_SEASON),
+    timezone: WORLD_CUP_TIMEZONE,
+    date: getBoliviaDate(),
+  });
+  const { fixtures, notice } = await fetchWorldCupFixturesByParams(params);
+  summary.fetchedFixtures = fixtures.length;
+  summary.notice = notice;
+
+  if (notice) {
+    summary.errors.push(notice);
+  }
+
+  if (!fixtures.length) {
+    return summary;
+  }
+
+  const fixtureByExternalId = new Map(fixtures.map((fixture) => [fixture.fixtureId, fixture]));
+  const fixtureByTeams = new Map(
+    fixtures.map((fixture) => [
+      `${normalizeTeamName(fixture.homeTeam)}:${normalizeTeamName(fixture.awayTeam)}`,
+      fixture,
+    ])
+  );
+
+  for (const match of candidates) {
+    const fixtureById =
+      match.source === 'api-football' && match.external_api_id
+        ? fixtureByExternalId.get(match.external_api_id)
+        : null;
+    const fixtureByName = fixtureByTeams.get(
+      `${normalizeTeamName(match.home_team)}:${normalizeTeamName(match.away_team)}`
+    );
+    const fixture = fixtureById ?? fixtureByName;
+
+    if (!fixture) {
+      continue;
+    }
+
+    const nextStatus = toAppStatus(fixture.statusShort);
+    const { error } = await supabase
+      .from('matches')
+      .update({
+        external_api_id: fixture.fixtureId,
+        home_flag: resolveTeamVisual(fixture.homeLogo, fixture.homeCode, match.home_team.slice(0, 3).toUpperCase()),
+        away_flag: resolveTeamVisual(fixture.awayLogo, fixture.awayCode, match.away_team.slice(0, 3).toUpperCase()),
+        kickoff_at: fixture.kickoffAt,
+        stadium: fixture.stadium,
+        stage_label: fixture.stageLabel,
+        status: nextStatus,
+        home_score: fixture.homeScore,
+        away_score: fixture.awayScore,
+        source: 'api-football',
+        raw_data: fixture,
+      })
+      .eq('id', match.id);
+
+    if (error) {
+      summary.ok = false;
+      summary.errors.push(error.message);
+      continue;
+    }
+
+    summary.updatedMatches += 1;
+
+    if (nextStatus === 'finished') {
+      summary.finishedMatches += 1;
+      const recalculated = await recalculateMatchSettlement(supabase, match.id, fixture);
+      summary.recalculatedMatches += recalculated ? 1 : 0;
+    }
+  }
+
+  return summary;
 }
 
 export async function fetchWorldCupMatchFeed({
