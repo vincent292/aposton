@@ -151,7 +151,7 @@ export async function registerAction(formData: FormData) {
     email,
     password,
     options: {
-      emailRedirectTo: `${getSiteUrl()}/auth/confirm?next=${encodeURIComponent(nextPath)}`,
+      emailRedirectTo: `${getSiteUrl()}/auth/callback?next=${encodeURIComponent(nextPath)}`,
       data: {
         full_name: fullName,
         document_number: documentNumber,
