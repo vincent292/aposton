@@ -8,12 +8,12 @@ const navItems = [
   { href: '/inicio', icon: Home, label: 'Inicio' },
   { href: '/en-vivo', icon: Radio, label: 'Partidos' },
   { href: '/ranking', icon: Trophy, label: 'Ranking' },
-  { href: '/login', icon: UserRound, label: 'Perfil' },
+  { href: '/perfil', icon: UserRound, label: 'Perfil' },
 ];
 
 export function AppShell({
   children,
-  title = 'Quiniela Familiar 2026',
+  title = 'Aposton Mundial 2026',
   subtitle = 'Apuesta entre familia y amigos',
   userLabel,
 }: {
@@ -25,17 +25,17 @@ export function AppShell({
   return (
     <main className="app-layout">
       <aside className="desktop-sidebar">
-        <Link href="/" className="brand-block">
+        <Link href="/inicio" className="brand-block">
           <div className="brand-icon">
             <Image src="/assets/fifalogo.png" alt="Aposton" width={52} height={52} priority />
           </div>
           <div>
             <strong>
-              Quiniela
+              Aposton
               <br />
-              Familiar 2026
+              Mundial 2026
             </strong>
-            <span>Aposton Mundial</span>
+            <span>Aposton</span>
           </div>
         </Link>
         <nav className="side-nav">
@@ -60,7 +60,7 @@ export function AppShell({
       <section className="app-panel">
         <header className="topbar">
           <div>
-            <p className="eyebrow">Family pool 2026</p>
+            <p className="eyebrow">Aposton 2026</p>
             <h1>{title}</h1>
             <p>{subtitle}</p>
           </div>
@@ -114,7 +114,7 @@ export function AuthShell({
 }) {
   return (
     <main className="auth-page">
-      <Link href="/" className="brand-mini">
+      <Link href="/inicio" className="brand-mini">
         <Image src="/assets/fifalogo.png" alt="Aposton" width={42} height={42} />
         Aposton
       </Link>
@@ -135,7 +135,7 @@ export function AuthShell({
           />
           <h1>{mode === 'login' ? 'Bienvenido de vuelta' : 'Crea tu cuenta familiar'}</h1>
           <p>
-            Entra a tu quiniela, guarda tus predicciones y vive cada partido con tu
+            Entra a Aposton, guarda tus predicciones y vive cada partido con tu
             familia y amigos.
           </p>
         </div>

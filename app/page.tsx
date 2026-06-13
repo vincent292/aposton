@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-const featureCards = ['Predicciones', 'Ranking familiar', 'Premios por partido'];
+const featureCards = ['Predicciones dobles', 'Ranking real', 'Premios por partido'];
 
 function MobileWelcomeCard({ compact = false }: { compact?: boolean }) {
   return (
@@ -40,7 +40,7 @@ function MobileWelcomeCard({ compact = false }: { compact?: boolean }) {
         <Link href="/login" className="home-primary-action">
           INICIAR SESION
         </Link>
-        <Link href="/register" className="home-secondary-action">
+        <Link href="/registro" className="home-secondary-action">
           CREAR CUENTA
         </Link>
       </div>
@@ -72,10 +72,10 @@ export default function LandingPage() {
             priority
             className="home-desktop-logo"
           />
-          <p className="home-kicker">Mundial 2026 · Quiniela familiar</p>
+          <p className="home-kicker">Mundial 2026 · Aposton premium</p>
           <h1>BIENVENIDO A APOSTON</h1>
           <p className="home-lead">
-            La quiniela familiar mas emocionante para vivir el Mundial 2026.
+            La app familiar mas emocionante para vivir el Mundial 2026.
           </p>
           <p className="home-support">
             Predice resultados, participa en pozos familiares y compite por el ranking.
@@ -84,7 +84,7 @@ export default function LandingPage() {
             <Link href="/login" className="home-primary-action">
               INICIAR SESION
             </Link>
-            <Link href="/register" className="home-secondary-action">
+            <Link href="/registro" className="home-secondary-action">
               CREAR CUENTA
             </Link>
           </div>

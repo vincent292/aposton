@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Quiniela Familiar 2026',
-  description: 'Mock Next.js para quiniela familiar de fútbol 2026.',
+  title: 'Aposton Mundial 2026',
+  description: 'App premium para apuestas familiares del Mundial 2026.',
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

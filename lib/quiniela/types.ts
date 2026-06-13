@@ -76,22 +76,67 @@ export type ExistingPrediction = {
   canEdit: boolean;
 };
 
+export type MatchPredictionSet = {
+  winner: ExistingPrediction | null;
+  exactScore: ExistingPrediction | null;
+};
+
+export type DashboardMatch = Match & {
+  viewerPredictions: MatchPredictionSet;
+  predictionOpen: boolean;
+};
+
 export type Viewer = {
   id: string;
   email: string | null;
   fullName: string | null;
+  documentNumber?: string | null;
 };
 
 export type RankingItem = {
   position: number;
   name: string;
+  totalWon: number;
   totalStaked: number;
+  balance: number;
   predictionsCount: number;
+  winnerHits: number;
+  exactHits: number;
   medal: string;
 };
 
 export type UserDashboardSummary = {
   totalStaked: number;
+  totalWon: number;
+  balance: number;
   predictionsCount: number;
   editedPredictions: number;
+};
+
+export type PredictionHistoryItem = {
+  id: string;
+  matchSlug: string;
+  matchLabel: string;
+  stadium: string;
+  date: string;
+  time: string;
+  kickoffAt: string;
+  status: string;
+  betMode: BetMode;
+  predictedWinner: PredictedWinner | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  stakeAmount: number;
+  editCount: number;
+  canEdit: boolean;
+  wonAmount: number;
+  isHit: boolean;
+};
+
+export type FamilyDependent = {
+  id: string;
+  fullName: string;
+  documentNumber: string;
+  relationship: 'child';
+  createdAt: string;
 };

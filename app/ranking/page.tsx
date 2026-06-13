@@ -9,16 +9,16 @@ export default async function RankingPage() {
   return (
     <AppShell
       title="Ranking familiar"
-      subtitle="Mientras cerramos resultados, el ranking se ordena por total apostado."
+      subtitle="Tabla general ordenada por premios ganados y aciertos reales de Aposton."
       userLabel={viewer?.fullName ?? viewer?.email ?? null}
     >
-      <section className="ranking-layout">
+      {rankings.length ? <section className="ranking-layout">
         {podium[1] ? (
           <div className="podium-card glass-card second">
             <span>2</span>
             <b>{podium[1].position}</b>
             <p>{podium[1].name}</p>
-            <strong>{formatCurrency(podium[1].totalStaked)}</strong>
+            <strong>{formatCurrency(podium[1].totalWon)}</strong>
           </div>
         ) : null}
         {podium[0] ? (
@@ -26,7 +26,7 @@ export default async function RankingPage() {
             <span>1</span>
             <b>{podium[0].position}</b>
             <p>{podium[0].name}</p>
-            <strong>{formatCurrency(podium[0].totalStaked)}</strong>
+            <strong>{formatCurrency(podium[0].totalWon)}</strong>
           </div>
         ) : null}
         {podium[2] ? (
@@ -34,22 +34,30 @@ export default async function RankingPage() {
             <span>3</span>
             <b>{podium[2].position}</b>
             <p>{podium[2].name}</p>
-            <strong>{formatCurrency(podium[2].totalStaked)}</strong>
+            <strong>{formatCurrency(podium[2].totalWon)}</strong>
           </div>
         ) : null}
-      </section>
+      </section> : null}
 
-      <section className="glass-card ranking-table">
-        {rankings.map((item) => (
-          <div className="rank-row" key={item.position}>
-            <span>{item.position}</span>
-            <i>{item.medal}</i>
-            <b>{item.name}</b>
-            <strong>{formatCurrency(item.totalStaked)}</strong>
-            <small>{item.predictionsCount} apuestas</small>
+      {rankings.length ? (
+        <section className="glass-card ranking-table">
+          {rankings.map((item) => (
+            <div className="rank-row" key={item.position}>
+              <span>{item.position}</span>
+              <i>{item.medal}</i>
+              <b>{item.name}</b>
+              <strong>{formatCurrency(item.totalWon)}</strong>
+              <small>{item.winnerHits + item.exactHits} aciertos</small>
+            </div>
+          ))}
+        </section>
+      ) : (
+        <section className="glass-card ranking-table">
+          <div className="inicio-empty-card">
+            Aun no hay jugadores con apuestas reales suficientes para armar el ranking.
           </div>
-        ))}
-      </section>
+        </section>
+      )}
     </AppShell>
   );
 }

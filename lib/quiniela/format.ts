@@ -14,6 +14,11 @@ const timeFormatter = new Intl.DateTimeFormat('es-BO', {
   timeZone: 'America/La_Paz',
 });
 
+const currencyFormatter = new Intl.NumberFormat('es-BO', {
+  minimumFractionDigits: 0,
+  maximumFractionDigits: 2,
+});
+
 export function formatMatchDate(value: string) {
   const date = new Date(value);
 
@@ -39,7 +44,7 @@ export function formatMatchTime(value: string) {
 }
 
 export function formatCurrency(amount: number) {
-  return `Bs ${amount}`;
+  return `Bs ${currencyFormatter.format(amount)}`;
 }
 
 export function getPredictedWinnerFromScore(
@@ -63,4 +68,23 @@ export function buildScore(homeScore: number | null, awayScore: number | null) {
   }
 
   return `${homeScore} - ${awayScore}`;
+}
+
+export function formatPredictedWinner(
+  value: PredictedWinner | null,
+  labels: { home: string; away: string }
+) {
+  if (value === 'home') {
+    return labels.home;
+  }
+
+  if (value === 'away') {
+    return labels.away;
+  }
+
+  if (value === 'draw') {
+    return 'Empate';
+  }
+
+  return 'Sin definir';
 }

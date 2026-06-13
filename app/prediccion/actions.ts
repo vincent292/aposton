@@ -1,8 +1,9 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { getPredictedWinnerFromScore } from '@/lib/quiniela/format';
+import { ensureMatchRecordBySlug } from '@/lib/quiniela/data';
 import { isPredictionOpen } from '@/lib/quiniela/rules';
+import { getPredictedWinnerFromScore } from '@/lib/quiniela/format';
 import type { BetMode, PredictedWinner } from '@/lib/quiniela/types';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -39,9 +40,9 @@ function clampScore(value: FormDataEntryValue | null) {
 
 export async function savePredictionAction(formData: FormData) {
   const slug = String(formData.get('slug') ?? '').trim();
-  const matchId = String(formData.get('matchId') ?? '').trim();
+  let matchId = String(formData.get('matchId') ?? '').trim();
 
-  if (!slug || !matchId) {
+  if (!slug) {
     redirect('/inicio');
   }
 
@@ -68,17 +69,30 @@ export async function savePredictionAction(formData: FormData) {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect(`/login?next=${encodeURIComponent(`/prediccion/${slug}`)}`);
+    redirect(`/registro?next=${encodeURIComponent(`/prediccion/${slug}`)}`);
   }
 
-  const betMode = String(formData.get('betMode') ?? 'winner') as BetMode;
-  const homeScore = clampScore(formData.get('homeScore'));
-  const awayScore = clampScore(formData.get('awayScore'));
-  const predictedWinner = String(
-    formData.get('predictedWinner') ?? ''
-  ) as PredictedWinner;
+  if (!matchId) {
+    matchId = (await ensureMatchRecordBySlug(slug)) ?? '';
+  }
 
-  if (betMode === 'winner' && !['home', 'draw', 'away'].includes(predictedWinner)) {
+  if (!matchId) {
+    redirect(
+      buildPredictionPath(slug, {
+        error: encodeMessage(
+          'Todavia no pudimos sincronizar este partido. Intenta de nuevo en unos segundos.'
+        ),
+      })
+    );
+  }
+
+  const winnerPredictedWinner = String(
+    formData.get('winnerPredictedWinner') ?? ''
+  ) as PredictedWinner;
+  const exactHomeScore = clampScore(formData.get('exactHomeScore'));
+  const exactAwayScore = clampScore(formData.get('exactAwayScore'));
+
+  if (!['home', 'draw', 'away'].includes(winnerPredictedWinner)) {
     redirect(
       buildPredictionPath(slug, {
         error: encodeMessage('Debes elegir ganador o empate.'),
@@ -100,24 +114,14 @@ export async function savePredictionAction(formData: FormData) {
     );
   }
 
-  const insertPayload = {
-    user_id: user.id,
-    match_id: matchId,
-    bet_mode: betMode,
-    predicted_winner:
-      betMode === 'winner'
-        ? predictedWinner
-        : getPredictedWinnerFromScore(homeScore, awayScore),
-    predicted_home_score: betMode === 'exact_score' ? homeScore : null,
-    predicted_away_score: betMode === 'exact_score' ? awayScore : null,
-  };
-
-  const { data: existingPrediction, error: existingError } = await supabase
+  const { data: existingPredictions, error: existingError } = await supabase
     .from('predictions')
-    .select('id, edit_count')
+    .select(
+      'id, bet_mode, predicted_winner, predicted_home_score, predicted_away_score, edit_count'
+    )
     .eq('match_id', matchId)
     .eq('user_id', user.id)
-    .maybeSingle();
+    .order('created_at', { ascending: true });
 
   if (existingError) {
     redirect(
@@ -127,16 +131,44 @@ export async function savePredictionAction(formData: FormData) {
     );
   }
 
-  if (existingPrediction && Number(existingPrediction.edit_count ?? 0) >= 1) {
+  const existingWinnerPrediction =
+    existingPredictions?.find((item) => item.bet_mode === 'winner') ?? null;
+  const existingExactPrediction =
+    existingPredictions?.find((item) => item.bet_mode === 'exact_score') ?? null;
+
+  const winnerChanged =
+    !existingWinnerPrediction ||
+    existingWinnerPrediction.predicted_winner !== winnerPredictedWinner;
+  const exactChanged =
+    !existingExactPrediction ||
+    Number(existingExactPrediction.predicted_home_score) !== exactHomeScore ||
+    Number(existingExactPrediction.predicted_away_score) !== exactAwayScore;
+
+  if (existingWinnerPrediction && winnerChanged && Number(existingWinnerPrediction.edit_count ?? 0) >= 1) {
     redirect(
       buildPredictionPath(slug, {
-        error: encodeMessage('Ya usaste tu unico cambio para este partido.'),
+        error: encodeMessage('La apuesta de ganador ya uso su unico cambio.'),
       })
     );
   }
 
-  if (!existingPrediction) {
-    const { error } = await supabase.from('predictions').insert(insertPayload);
+  if (existingExactPrediction && exactChanged && Number(existingExactPrediction.edit_count ?? 0) >= 1) {
+    redirect(
+      buildPredictionPath(slug, {
+        error: encodeMessage('La apuesta de marcador exacto ya uso su unico cambio.'),
+      })
+    );
+  }
+
+  if (!existingWinnerPrediction) {
+    const { error } = await supabase.from('predictions').insert({
+      user_id: user.id,
+      match_id: matchId,
+      bet_mode: 'winner' satisfies BetMode,
+      predicted_winner: winnerPredictedWinner,
+      predicted_home_score: null,
+      predicted_away_score: null,
+    });
 
     if (error) {
       redirect(
@@ -145,27 +177,65 @@ export async function savePredictionAction(formData: FormData) {
         })
       );
     }
-
-    redirect(`/guardada?match=${slug}&mode=${betMode}&updated=0`);
-  }
-
-  const { error } = await supabase
-    .from('predictions')
-    .update({
-      bet_mode: insertPayload.bet_mode,
-      predicted_winner: insertPayload.predicted_winner,
-      predicted_home_score: insertPayload.predicted_home_score,
-      predicted_away_score: insertPayload.predicted_away_score,
-    })
-    .eq('id', existingPrediction.id);
-
-  if (error) {
-    redirect(
-      buildPredictionPath(slug, {
-        error: encodeMessage(error.message),
+  } else if (winnerChanged) {
+    const { error } = await supabase
+      .from('predictions')
+      .update({
+        predicted_winner: winnerPredictedWinner,
+        predicted_home_score: null,
+        predicted_away_score: null,
       })
-    );
+      .eq('id', existingWinnerPrediction.id);
+
+    if (error) {
+      redirect(
+        buildPredictionPath(slug, {
+          error: encodeMessage(error.message),
+        })
+      );
+    }
   }
 
-  redirect(`/guardada?match=${slug}&mode=${betMode}&updated=1`);
+  if (!existingExactPrediction) {
+    const { error } = await supabase.from('predictions').insert({
+      user_id: user.id,
+      match_id: matchId,
+      bet_mode: 'exact_score' satisfies BetMode,
+      predicted_winner: getPredictedWinnerFromScore(exactHomeScore, exactAwayScore),
+      predicted_home_score: exactHomeScore,
+      predicted_away_score: exactAwayScore,
+    });
+
+    if (error) {
+      redirect(
+        buildPredictionPath(slug, {
+          error: encodeMessage(error.message),
+        })
+      );
+    }
+  } else if (exactChanged) {
+    const { error } = await supabase
+      .from('predictions')
+      .update({
+        predicted_winner: getPredictedWinnerFromScore(exactHomeScore, exactAwayScore),
+        predicted_home_score: exactHomeScore,
+        predicted_away_score: exactAwayScore,
+      })
+      .eq('id', existingExactPrediction.id);
+
+    if (error) {
+      redirect(
+        buildPredictionPath(slug, {
+          error: encodeMessage(error.message),
+        })
+      );
+    }
+  }
+
+  const updated = Boolean(
+    (existingWinnerPrediction && winnerChanged) ||
+      (existingExactPrediction && exactChanged)
+  );
+
+  redirect(`/guardada?match=${slug}&mode=combo&updated=${updated ? '1' : '0'}`);
 }

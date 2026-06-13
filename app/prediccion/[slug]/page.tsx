@@ -3,7 +3,7 @@ import { AppShell } from '@/components/AppShell';
 import { PredictionClient } from '@/components/PredictionClient';
 import {
   getMatchBySlug,
-  getPredictionForViewer,
+  getPredictionsForViewer,
   getViewer,
 } from '@/lib/quiniela/data';
 import { isSupabaseConfigured } from '@/lib/supabase/config';
@@ -25,22 +25,22 @@ export default async function PredictionDetailPage({
   }
 
   if (!viewer) {
-    redirect(`/login?next=${encodeURIComponent(`/prediccion/${slug}`)}`);
+    redirect(`/registro?next=${encodeURIComponent(`/prediccion/${slug}`)}`);
   }
 
-  const existingPrediction = await getPredictionForViewer(match.recordId, viewer.id);
+  const existingPredictions = await getPredictionsForViewer(match.recordId, viewer.id);
   const errorMessage =
     typeof query.error === 'string' ? decodeURIComponent(query.error) : null;
 
   return (
     <AppShell
       title="Realizar prediccion"
-      subtitle="Guarda tu apuesta ahora. Despues solo tendras un cambio disponible."
+      subtitle="Guarda ganador y marcador exacto del partido. Cada una tiene un solo cambio."
       userLabel={viewer.fullName ?? viewer.email}
     >
       <PredictionClient
         match={match}
-        existingPrediction={existingPrediction}
+        existingPredictions={existingPredictions}
         isSupabaseConfigured={isSupabaseConfigured()}
         errorMessage={errorMessage}
       />

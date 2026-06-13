@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { AppShell } from '@/components/AppShell';
 import { getViewer } from '@/lib/quiniela/data';
 
@@ -12,21 +13,26 @@ type SuccessPageProps = {
 export default async function SuccessPage({ searchParams }: SuccessPageProps) {
   const [viewer, params] = await Promise.all([getViewer(), searchParams]);
   const updated = params.updated === '1';
-  const betMode = params.mode === 'exact_score' ? 'marcador exacto' : 'ganador';
+  const betMode =
+    params.mode === 'combo'
+      ? 'ganador y marcador exacto'
+      : params.mode === 'exact_score'
+        ? 'marcador exacto'
+        : 'ganador';
 
   return (
     <AppShell
-      title="Prediccion guardada"
-      subtitle="Confirmacion final del flujo de apuesta."
+      title="Apuesta guardada"
+      subtitle="Confirmacion final de tus jugadas en Aposton."
       userLabel={viewer?.fullName ?? viewer?.email ?? null}
     >
       <section className="success-card glass-card">
-        <div className="check-big">OK</div>
-        <h2>{updated ? 'Tu cambio fue guardado' : 'Tu apuesta fue guardada'}</h2>
+        <Image src="/assets/mascot.png" alt="Mascota Aposton" width={176} height={176} />
+        <h2>{updated ? 'Tus cambios fueron guardados' : 'Tus apuestas fueron guardadas'}</h2>
         <p>
           Se registro tu apuesta por {betMode}. {updated
-            ? 'Ya no podras volver a modificar este partido.'
-            : 'Si cambias de idea, solo tendras una modificacion disponible.'}
+            ? 'Las apuestas que cambiaste ya no podran volver a editarse.'
+            : 'Si cambias de idea, cada apuesta tendra una sola modificacion disponible.'}
         </p>
         <div className="hero-actions centered">
           <Link className="primary-btn" href="/inicio">
