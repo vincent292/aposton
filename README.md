@@ -81,9 +81,34 @@ Tambien deben existir en Vercel:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_ANON_KEY=
+NEXT_PUBLIC_SITE_URL=https://TU-DOMINIO.com
 SUPABASE_SERVICE_ROLE_KEY=
 API_FOOTBALL_KEY=
 API_FOOTBALL_SEASON=2026
+```
+
+## Login con Google en produccion
+
+Si despues de iniciar sesion con Google vuelve a `http://localhost:3000/?code=...`,
+Supabase todavia esta usando `localhost` como URL autorizada por defecto.
+
+En Supabase ve a `Authentication > URL Configuration` y configura:
+
+```text
+Site URL:
+https://TU-DOMINIO.com
+
+Redirect URLs:
+https://TU-DOMINIO.com/auth/callback
+http://localhost:3000/auth/callback
+```
+
+En Vercel tambien agrega `NEXT_PUBLIC_SITE_URL=https://TU-DOMINIO.com` y vuelve a
+desplegar. En Google Cloud OAuth, la URL autorizada normalmente debe ser la de
+Supabase:
+
+```text
+https://TU-PROJECT-REF.supabase.co/auth/v1/callback
 ```
 
 ### Ejecutar el SQL en Supabase
