@@ -1,0 +1,2 @@
+-- Seed inicial vacio.
+-- Si luego quieres usuarios demo o partidos demo para local, los agregamos aqui.
