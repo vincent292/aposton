@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
+import { Home, Trophy, Radio, UserRound } from 'lucide-react';
 import { logoutAction } from '@/app/auth/actions';
 
 const navItems = [
-  { href: '/inicio', icon: 'Inicio', label: 'Inicio' },
-  { href: '/en-vivo', icon: 'Live', label: 'Partidos' },
-  { href: '/ranking', icon: 'Top', label: 'Ranking' },
-  { href: '/login', icon: 'User', label: 'Perfil' },
+  { href: '/inicio', icon: Home, label: 'Inicio' },
+  { href: '/en-vivo', icon: Radio, label: 'Partidos' },
+  { href: '/ranking', icon: Trophy, label: 'Ranking' },
+  { href: '/login', icon: UserRound, label: 'Perfil' },
 ];
 
 export function AppShell({
@@ -25,7 +26,9 @@ export function AppShell({
     <main className="app-layout">
       <aside className="desktop-sidebar">
         <Link href="/" className="brand-block">
-          <div className="brand-icon">26</div>
+          <div className="brand-icon">
+            <Image src="/assets/fifalogo.png" alt="Aposton" width={52} height={52} priority />
+          </div>
           <div>
             <strong>
               Quiniela
@@ -36,12 +39,16 @@ export function AppShell({
           </div>
         </Link>
         <nav className="side-nav">
-          {navItems.map((item) => (
-            <Link href={item.href} key={item.href}>
-              {item.icon}
-              <span>{item.label}</span>
-            </Link>
-          ))}
+          {navItems.map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <Link href={item.href} key={item.href}>
+                <Icon size={19} strokeWidth={2.4} aria-hidden="true" />
+                <span>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
         <div className="side-card">
           <img src="/assets/ball.png" alt="Balon" />
@@ -83,12 +90,16 @@ export function AppShell({
       </section>
 
       <nav className="mobile-bottom-nav">
-        {navItems.map((item) => (
-          <Link href={item.href} key={item.href}>
-            {item.icon}
-            <span>{item.label}</span>
-          </Link>
-        ))}
+        {navItems.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <Link href={item.href} key={item.href}>
+              <Icon size={20} strokeWidth={2.4} aria-hidden="true" />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
       </nav>
     </main>
   );

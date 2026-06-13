@@ -1,9 +1,12 @@
 import Link from 'next/link';
 import { AppShell } from '@/components/AppShell';
+import { LiveAutoRefresh } from '@/components/LiveAutoRefresh';
 import { Team } from '@/components/MatchCard';
 import { getViewer } from '@/lib/quiniela/data';
 import type { Match, MatchFeedView } from '@/lib/quiniela/types';
 import { getWorldCupMatches, worldCupGameToMatch } from '@/lib/worldcup/worldcup26';
+
+export const dynamic = 'force-dynamic';
 
 type PageSearchParams = Promise<{
   view?: string;
@@ -13,16 +16,16 @@ type PageSearchParams = Promise<{
 
 const viewLabels: Record<MatchFeedView, string> = {
   live: 'En vivo',
-  today: 'Fecha',
-  all: 'Todos',
+  today: 'Hoy',
+  all: 'Dia completo',
 };
 
 function getValidView(value?: string): MatchFeedView {
-  if (value === 'today' || value === 'all') {
+  if (value === 'live' || value === 'all') {
     return value;
   }
 
-  return 'live';
+  return 'today';
 }
 
 function getBoliviaDate(value = new Date()) {
@@ -68,16 +71,20 @@ async function getWorldCupFeed(view: MatchFeedView, date: string) {
   const matches = await getWorldCupMatches()
     .then((games) => games.map(worldCupGameToMatch))
     .catch(() => []);
+  const todayMatches = matches
+    .filter((match) => getMatchDate(match) === date)
+    .sort((a, b) => {
+      const aTime = a.kickoffAt ? new Date(a.kickoffAt).getTime() : 0;
+      const bTime = b.kickoffAt ? new Date(b.kickoffAt).getTime() : 0;
+
+      return aTime - bTime;
+    });
 
   if (view === 'live') {
-    return matches.filter((match) => match.live);
+    return todayMatches.filter((match) => match.live);
   }
 
-  if (view === 'today') {
-    return matches.filter((match) => getMatchDate(match) === date);
-  }
-
-  return matches;
+  return todayMatches;
 }
 
 export default async function LivePage({
@@ -98,9 +105,10 @@ export default async function LivePage({
   return (
     <AppShell
       title="Partidos del Mundial"
-      subtitle="Marcadores reales, filtros por fecha y detalle conectado desde WorldCup26."
+      subtitle="Partidos de hoy, marcadores en vivo y calendario del dia."
       userLabel={viewer?.fullName ?? viewer?.email ?? null}
     >
+      <LiveAutoRefresh />
       <section className="live-board">
         <div className="live-toolbar">
           <nav className="live-filter-tabs" aria-label="Filtros de partidos">
@@ -145,7 +153,10 @@ export default async function LivePage({
                       key={match.id}
                     >
                       <div className="live-match-status">
-                        <span>{getMatchStatusLabel(match)}</span>
+                        <span>
+                          <i aria-hidden="true">{match.live ? '●' : match.status === 'finished' ? '✓' : '◷'}</i>
+                          {getMatchStatusLabel(match)}
+                        </span>
                         <small>{match.live ? match.time : match.date}</small>
                       </div>
                       <div className="live-match-teams">
@@ -162,7 +173,7 @@ export default async function LivePage({
               <div className="empty-live-block">
                 {view === 'live'
                   ? 'No hay partidos jugandose ahora mismo.'
-                  : 'No hay partidos para este filtro.'}
+                  : 'No hay partidos programados para este dia.'}
               </div>
             )}
           </section>
@@ -191,11 +202,11 @@ export default async function LivePage({
                   <article className="live-section glass-card">
                     <div className="live-section-head">
                       <h3>Fuente</h3>
-                      <small>WorldCup26</small>
+                      <small>Calendario</small>
                     </div>
                     <div className="empty-live-block">
-                      Esta vista usa WorldCup26 para calendario, marcador, estado, grupo,
-                      estadio, equipos y banderas. Los datos se actualizan con el cron protegido.
+                      Esta vista muestra solo los partidos de la fecha seleccionada. Al cambiar
+                      el dia, el filtro se actualiza automaticamente con ese calendario.
                     </div>
                   </article>
 
