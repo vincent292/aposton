@@ -90,7 +90,7 @@ export function PredictionHistory({ items }: { items: PredictionHistoryItem[] })
                     {isPending ? (
                       <span className="profile-history-note">
                         <Target size={14} aria-hidden="true" />
-                        Se cierra 10 min antes
+                        Se cierra al iniciar
                       </span>
                     ) : item.isHit ? (
                       <span className="profile-history-note gain">

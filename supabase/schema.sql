@@ -139,8 +139,8 @@ begin
     raise exception 'La prediccion ya no se puede guardar porque el partido no esta disponible.';
   end if;
 
-  if match_record.kickoff_at - interval '10 minutes' <= timezone('utc', now()) then
-    raise exception 'Las apuestas cierran 10 minutos antes del inicio del partido.';
+  if match_record.kickoff_at < timezone('utc', now()) then
+    raise exception 'Las apuestas cierran cuando empieza el partido.';
   end if;
 
   if tg_op = 'UPDATE' then

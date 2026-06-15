@@ -1,7 +1,5 @@
 import type { Match } from './types';
 
-const PREDICTION_CLOSE_MINUTES = 10;
-
 export function isPredictionOpen(match: Pick<Match, 'kickoffAt' | 'status'>) {
   if (match.status === 'live' || match.status === 'finished' || match.status === 'cancelled') {
     return false;
@@ -17,7 +15,7 @@ export function isPredictionOpen(match: Pick<Match, 'kickoffAt' | 'status'>) {
     return false;
   }
 
-  return Date.now() < kickoffTime - PREDICTION_CLOSE_MINUTES * 60 * 1000;
+  return Date.now() <= kickoffTime;
 }
 
 export function getPredictionClosedMessage(match: Pick<Match, 'status'>) {
@@ -33,5 +31,5 @@ export function getPredictionClosedMessage(match: Pick<Match, 'status'>) {
     return 'El partido fue cancelado.';
   }
 
-  return 'Las apuestas cierran 10 minutos antes del inicio.';
+  return 'Las apuestas cierran cuando empieza el partido.';
 }
