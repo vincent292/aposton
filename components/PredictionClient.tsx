@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Target, X } from 'lucide-react';
 import { savePredictionAction } from '@/app/prediccion/actions';
 import { formatPredictedWinner } from '@/lib/quiniela/format';
@@ -31,6 +32,7 @@ export function PredictionClient({
     existingPredictions.winner?.predictedWinner ?? 'home'
   );
   const [betModalOpen, setBetModalOpen] = useState(false);
+  const [modalMounted, setModalMounted] = useState(false);
 
   const total = useMemo(
     () => match.winnerStake + match.exactScoreStake,
@@ -51,6 +53,10 @@ export function PredictionClient({
   const hasPredictions = Boolean(
     existingPredictions.winner || existingPredictions.exactScore
   );
+
+  useEffect(() => {
+    setModalMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!betModalOpen) {
@@ -169,8 +175,9 @@ export function PredictionClient({
         </div>
       </section>
 
-      {betModalOpen ? (
-        <div
+      {modalMounted && betModalOpen
+        ? createPortal(
+            <div
           className="prediction-modal"
           role="dialog"
           aria-modal="true"
@@ -325,8 +332,10 @@ export function PredictionClient({
               />
             </form>
           </div>
-        </div>
-      ) : null}
+            </div>,
+            document.body
+          )
+        : null}
     </div>
   );
 }
