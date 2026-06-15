@@ -222,6 +222,7 @@ h1, h2, h3, p { margin-top: 0; }
 .live-match-list { display: grid; gap: 12px; }
 .live-match-row { display: grid; gap: 12px; padding: 16px; border-radius: 18px; border: 1px solid var(--line); background: rgba(255,255,255,.055); transition: transform .2s ease, border-color .2s ease, background .2s ease; }
 .live-match-row:hover, .live-match-row.active { transform: translateY(-2px); border-color: rgba(49,210,29,.35); background: rgba(49,210,29,.09); }
+.live-match-row__main { display: grid; gap: 12px; min-width: 0; }
 .live-match-status { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 12px; font-weight: 900; text-transform: uppercase; }
 .live-match-status span { color: #75ff69; display: inline-flex; align-items: center; gap: 7px; }
 .live-match-status span i { width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center; background: rgba(49,210,29,.12); border: 1px solid rgba(49,210,29,.25); color: #8eff82; font-style: normal; font-size: 12px; line-height: 1; }
@@ -231,6 +232,7 @@ h1, h2, h3, p { margin-top: 0; }
 .live-match-row p { margin: 0; color: var(--muted); font-size: 12px; text-align: center; }
 .live-detail { display: grid; gap: 16px; min-width: 0; }
 .live-hero { padding: clamp(20px, 3vw, 32px); }
+.live-bet-cta { margin-top: 18px; }
 .big-score { display: block; font-size: clamp(44px, 8vw, 86px); letter-spacing: -.06em; }
 .tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; border-radius: 999px; background: rgba(255,255,255,.055); padding: 5px; margin: 22px 0; }
 .tabs span { text-align: center; padding: 11px 6px; border-radius: 999px; font-size: 12px; font-weight: 900; color: #dce6ff; }

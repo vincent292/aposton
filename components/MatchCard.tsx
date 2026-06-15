@@ -25,8 +25,10 @@ export function MatchCard({
   const hasPredictions = Boolean(viewerPredictions.winner || viewerPredictions.exactScore);
 
   return (
-    <article
+    <Link
+      aria-label={`Apostar en ${match.home} vs ${match.away}`}
       className={`inicio-match-card${featured ? ' is-featured' : ''}${match.live ? ' is-live' : ''}`}
+      href={href}
     >
       <div className="inicio-match-card__glow" aria-hidden="true" />
       <div className="inicio-match-card__head">
@@ -89,10 +91,10 @@ export function MatchCard({
         {!hasPredictions ? <strong>Aun no registraste tus apuestas.</strong> : null}
       </div>
 
-      <Link className="inicio-primary-btn" href={href}>
+      <span className="inicio-primary-btn">
         Apostar
-      </Link>
-    </article>
+      </span>
+    </Link>
   );
 }
 

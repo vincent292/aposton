@@ -58,6 +58,18 @@ function getMatchStatusLabel(match: Match) {
   return 'PROGRAMADO';
 }
 
+function getMatchStatusMark(match: Match) {
+  if (match.live) {
+    return 'LIVE';
+  }
+
+  if (match.status === 'finished') {
+    return 'OK';
+  }
+
+  return 'PROX';
+}
+
 function buildFilterHref(view: MatchFeedView, date: string) {
   const params = new URLSearchParams({ view });
 
@@ -148,25 +160,32 @@ export default async function LivePage({
                   const selected = selectedMatch?.id === match.id;
 
                   return (
-                    <Link
+                    <article
                       className={`live-match-row ${selected ? 'active' : ''}`}
-                      href={`/en-vivo?${query.toString()}`}
                       key={match.id}
                     >
-                      <div className="live-match-status">
-                        <span>
-                          <i aria-hidden="true">{match.live ? '●' : match.status === 'finished' ? '✓' : '◷'}</i>
-                          {getMatchStatusLabel(match)}
-                        </span>
-                        <small>{match.live ? match.time : match.date}</small>
-                      </div>
-                      <div className="live-match-teams">
-                        <Team flag={match.homeFlag} name={match.home} />
-                        <strong>{match.score ?? 'VS'}</strong>
-                        <Team flag={match.awayFlag} name={match.away} />
-                      </div>
-                      <p>{match.stadium}</p>
-                    </Link>
+                      <Link
+                        className="live-match-row__main"
+                        href={`/en-vivo?${query.toString()}`}
+                      >
+                        <div className="live-match-status">
+                          <span>
+                            <i aria-hidden="true">{getMatchStatusMark(match)}</i>
+                            {getMatchStatusLabel(match)}
+                          </span>
+                          <small>{match.live ? match.time : match.date}</small>
+                        </div>
+                        <div className="live-match-teams">
+                          <Team flag={match.homeFlag} name={match.home} />
+                          <strong>{match.score ?? 'VS'}</strong>
+                          <Team flag={match.awayFlag} name={match.away} />
+                        </div>
+                        <p>{match.stadium}</p>
+                      </Link>
+                      <Link className="inicio-primary-btn is-small wide" href={`/prediccion/${match.id}`}>
+                        Apostar
+                      </Link>
+                    </article>
                   );
                 })}
               </div>
@@ -197,6 +216,9 @@ export default async function LivePage({
                     <span>{selectedMatch.stadium}</span>
                     <span>{selectedMatch.time} - hora local</span>
                   </div>
+                  <Link className="inicio-primary-btn wide live-bet-cta" href={`/prediccion/${selectedMatch.id}`}>
+                    Apostar este partido
+                  </Link>
                 </div>
 
                 <div className="live-data-grid">
