@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { AppShell } from '@/components/AppShell';
 import { LiveAutoRefresh } from '@/components/LiveAutoRefresh';
 import { Team } from '@/components/MatchCard';
+import { formatMatchCalendarDate } from '@/lib/quiniela/format';
 import { getViewer } from '@/lib/quiniela/data';
 import type { Match, MatchFeedView } from '@/lib/quiniela/types';
 import { getWorldCupMatches, worldCupGameToMatch } from '@/lib/worldcup/worldcup26';
@@ -42,7 +43,7 @@ function getMatchDate(match: Match) {
     return '';
   }
 
-  return getBoliviaDate(new Date(match.kickoffAt));
+  return formatMatchCalendarDate(match.kickoffAt, match.venueTimeZone);
 }
 
 function getMatchStatusLabel(match: Match) {
@@ -194,7 +195,7 @@ export default async function LivePage({
                   <div className="match-meta">
                     <span>{selectedMatch.group}</span>
                     <span>{selectedMatch.stadium}</span>
-                    <span>{selectedMatch.time}</span>
+                    <span>{selectedMatch.time} - hora local</span>
                   </div>
                 </div>
 
@@ -217,7 +218,7 @@ export default async function LivePage({
                     </div>
                     <div className="events-list">
                       <div className="event-row">
-                        <span>{selectedMatch.time}</span>
+                        <span>{selectedMatch.time} - local</span>
                         <div>
                           <strong>{selectedMatch.home} vs {selectedMatch.away}</strong>
                           <p>{selectedMatch.group}</p>

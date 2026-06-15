@@ -45,7 +45,7 @@ export function PredictionHistory({ items }: { items: PredictionHistoryItem[] })
                     <strong>{item.matchLabel}</strong>
                     <p>
                       <Clock3 size={14} aria-hidden="true" />
-                      {item.date} - {item.time}
+                      {item.date} - {item.time} - local
                     </p>
                   </div>
                   <span

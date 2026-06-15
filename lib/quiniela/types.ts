@@ -14,6 +14,7 @@ export type Match = {
   date: string;
   time: string;
   stadium: string;
+  venueTimeZone?: string | null;
   group: string;
   winnerStake: number;
   exactScoreStake: number;
@@ -121,6 +122,7 @@ export type PredictionHistoryItem = {
   date: string;
   time: string;
   kickoffAt: string;
+  venueTimeZone?: string | null;
   status: string;
   betMode: BetMode;
   predictedWinner: PredictedWinner | null;

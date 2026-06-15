@@ -1,4 +1,6 @@
 import { buildScore, formatMatchDate, formatMatchTime } from '@/lib/quiniela/format';
+import { translateTeamName } from '@/lib/quiniela/team-names';
+import { resolveVenueTimeZone } from '@/lib/quiniela/venue-time';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   Match,
@@ -37,6 +39,7 @@ type ApiFootballFixture = {
   awayLogo: string | null;
   kickoffAt: string;
   stadium: string;
+  venueTimeZone: string | null;
   stageLabel: string;
   statusShort: string;
   statusLong: string;
@@ -290,12 +293,14 @@ async function recalculateMatchSettlement(
 
 function mapFixtureToMatch(fixture: ApiFootballFixture): Match {
   const live = isLiveStatus(fixture.statusShort);
+  const homeLabel = translateTeamName(fixture.homeTeam);
+  const awayLabel = translateTeamName(fixture.awayTeam);
 
   return {
     id: fixture.slug,
     externalApiId: fixture.fixtureId,
-    home: fixture.homeTeam,
-    away: fixture.awayTeam,
+    home: homeLabel || fixture.homeTeam,
+    away: awayLabel || fixture.awayTeam,
     homeFlag: resolveTeamVisual(
       fixture.homeLogo,
       fixture.homeCode,
@@ -308,9 +313,10 @@ function mapFixtureToMatch(fixture: ApiFootballFixture): Match {
     ),
     homeFlagUrl: fixture.homeLogo ?? buildCountryFlagUrl(fixture.homeCode),
     awayFlagUrl: fixture.awayLogo ?? buildCountryFlagUrl(fixture.awayCode),
-    date: live ? 'EN VIVO' : formatMatchDate(fixture.kickoffAt),
-    time: live ? `${fixture.elapsed ?? 0}'` : formatMatchTime(fixture.kickoffAt),
+    date: live ? 'EN VIVO' : formatMatchDate(fixture.kickoffAt, fixture.venueTimeZone),
+    time: live ? `${fixture.elapsed ?? 0}'` : formatMatchTime(fixture.kickoffAt, fixture.venueTimeZone),
     stadium: fixture.stadium,
+    venueTimeZone: fixture.venueTimeZone,
     group: fixture.stageLabel,
     winnerStake: 1,
     exactScoreStake: 2,
@@ -323,17 +329,22 @@ function mapFixtureToMatch(fixture: ApiFootballFixture): Match {
 
 function enrichMatchWithFixture(match: Match, fixture: ApiFootballFixture): Match {
   const live = isLiveStatus(fixture.statusShort);
+  const homeLabel = translateTeamName(fixture.homeTeam);
+  const awayLabel = translateTeamName(fixture.awayTeam);
 
   return {
     ...match,
     externalApiId: match.externalApiId ?? fixture.fixtureId,
+    home: homeLabel || match.home,
+    away: awayLabel || match.away,
     homeFlag: resolveTeamVisual(fixture.homeLogo, fixture.homeCode, match.homeFlag),
     awayFlag: resolveTeamVisual(fixture.awayLogo, fixture.awayCode, match.awayFlag),
     homeFlagUrl: fixture.homeLogo ?? buildCountryFlagUrl(fixture.homeCode) ?? match.homeFlagUrl ?? null,
     awayFlagUrl: fixture.awayLogo ?? buildCountryFlagUrl(fixture.awayCode) ?? match.awayFlagUrl ?? null,
-    date: live ? 'EN VIVO' : formatMatchDate(fixture.kickoffAt),
-    time: live ? `${fixture.elapsed ?? 0}'` : formatMatchTime(fixture.kickoffAt),
+    date: live ? 'EN VIVO' : formatMatchDate(fixture.kickoffAt, fixture.venueTimeZone),
+    time: live ? `${fixture.elapsed ?? 0}'` : formatMatchTime(fixture.kickoffAt, fixture.venueTimeZone),
     stadium: fixture.stadium || match.stadium,
+    venueTimeZone: fixture.venueTimeZone ?? match.venueTimeZone ?? null,
     group: fixture.stageLabel || match.group,
     live,
     score: buildScore(fixture.homeScore, fixture.awayScore) ?? match.score,
@@ -344,7 +355,7 @@ function enrichMatchWithFixture(match: Match, fixture: ApiFootballFixture): Matc
 
 function mapApiResponseToFixtures(payload: ApiFootballResponse): ApiFootballFixture[] {
   return (payload.response ?? [])
-    .map((item) => {
+    .map<ApiFootballFixture | null>((item) => {
       const fixtureId = item.fixture?.id;
       const kickoffAt = item.fixture?.date;
       const homeTeam = item.teams?.home?.name?.trim();
@@ -365,6 +376,9 @@ function mapApiResponseToFixtures(payload: ApiFootballResponse): ApiFootballFixt
         awayLogo: item.teams?.away?.logo?.trim() ?? null,
         kickoffAt,
         stadium: item.fixture?.venue?.name?.trim() || 'Sede por confirmar',
+        venueTimeZone: resolveVenueTimeZone({
+          stadium: item.fixture?.venue?.name?.trim() ?? null,
+        }),
         stageLabel: item.league?.round?.trim() || 'Mundial 2026',
         statusShort: item.fixture?.status?.short?.trim() || 'NS',
         statusLong: item.fixture?.status?.long?.trim() || 'Not Started',

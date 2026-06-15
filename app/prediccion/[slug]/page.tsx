@@ -34,8 +34,8 @@ export default async function PredictionDetailPage({
 
   return (
     <AppShell
-      title="Realizar prediccion"
-      subtitle="Guarda ganador y marcador exacto del partido. Cada una tiene un solo cambio."
+      title="Apostar partido"
+      subtitle="Entra al modal para elegir ganador y marcador exacto. Cada una tiene un solo cambio."
       userLabel={viewer.fullName ?? viewer.email}
     >
       <PredictionClient

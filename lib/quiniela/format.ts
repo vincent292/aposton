@@ -1,46 +1,100 @@
 import type { PredictedWinner } from './types';
 
-const dateFormatter = new Intl.DateTimeFormat('es-BO', {
-  day: '2-digit',
-  month: 'short',
-  year: 'numeric',
-  timeZone: 'America/La_Paz',
-});
-
-const timeFormatter = new Intl.DateTimeFormat('es-BO', {
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-  timeZone: 'America/La_Paz',
-});
+const dateFormatterCache = new Map<string, Intl.DateTimeFormat>();
+const timeFormatterCache = new Map<string, Intl.DateTimeFormat>();
+const isoDateFormatterCache = new Map<string, Intl.DateTimeFormat>();
 
 const currencyFormatter = new Intl.NumberFormat('es-BO', {
   minimumFractionDigits: 0,
   maximumFractionDigits: 2,
 });
 
-export function formatMatchDate(value: string) {
+function getDateFormatter(timeZone?: string | null) {
+  const cacheKey = timeZone ?? 'default';
+
+  if (!dateFormatterCache.has(cacheKey)) {
+    dateFormatterCache.set(
+      cacheKey,
+      new Intl.DateTimeFormat('es-BO', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        ...(timeZone ? { timeZone } : {}),
+      })
+    );
+  }
+
+  return dateFormatterCache.get(cacheKey)!;
+}
+
+function getTimeFormatter(timeZone?: string | null) {
+  const cacheKey = timeZone ?? 'default';
+
+  if (!timeFormatterCache.has(cacheKey)) {
+    timeFormatterCache.set(
+      cacheKey,
+      new Intl.DateTimeFormat('es-BO', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+        ...(timeZone ? { timeZone } : {}),
+      })
+    );
+  }
+
+  return timeFormatterCache.get(cacheKey)!;
+}
+
+function getIsoDateFormatter(timeZone?: string | null) {
+  const cacheKey = timeZone ?? 'default';
+
+  if (!isoDateFormatterCache.has(cacheKey)) {
+    isoDateFormatterCache.set(
+      cacheKey,
+      new Intl.DateTimeFormat('en-CA', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        ...(timeZone ? { timeZone } : {}),
+      })
+    );
+  }
+
+  return isoDateFormatterCache.get(cacheKey)!;
+}
+
+export function formatMatchDate(value: string, timeZone?: string | null) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return dateFormatter
+  return getDateFormatter(timeZone)
     .format(date)
     .replace('.', '')
     .replace(',', '')
     .toUpperCase();
 }
 
-export function formatMatchTime(value: string) {
+export function formatMatchTime(value: string, timeZone?: string | null) {
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
     return value;
   }
 
-  return timeFormatter.format(date);
+  return getTimeFormatter(timeZone).format(date);
+}
+
+export function formatMatchCalendarDate(value: string, timeZone?: string | null) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return getIsoDateFormatter(timeZone).format(date);
 }
 
 export function formatCurrency(amount: number) {

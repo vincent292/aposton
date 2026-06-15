@@ -1,11 +1,11 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Match } from '@/lib/quiniela/types';
 import { buildScore, formatMatchDate, formatMatchTime } from '@/lib/quiniela/format';
+import { translateTeamName } from '@/lib/quiniela/team-names';
+import { parseVenueLocalDate, resolveVenueTimeZone } from '@/lib/quiniela/venue-time';
 
 const WORLDCUP26_BASE_URL = process.env.WORLDCUP26_BASE_URL ?? 'http://worldcup26.ir/get';
 const REQUEST_REVALIDATE_SECONDS = 60;
-const DEFAULT_TIMEZONE_OFFSET = '-04:00';
-
 type UnknownRecord = Record<string, unknown>;
 
 type WorldCup26Team = {
@@ -33,6 +33,7 @@ type NormalizedWorldCup26Game = {
   awayFlag: string | null;
   kickoffAt: string;
   stadium: string | null;
+  venueTimeZone: string | null;
   stageLabel: string;
   status: 'scheduled' | 'live' | 'finished' | 'cancelled';
   homeScore: number | null;
@@ -100,18 +101,6 @@ function slugify(value: string) {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-}
-
-function parseWorldCupDate(value: unknown) {
-  const text = stringValue(value);
-  const match = text.match(/^(\d{2})\/(\d{2})\/(\d{4})\s+(\d{2}):(\d{2})$/);
-
-  if (!match) {
-    return new Date().toISOString();
-  }
-
-  const [, month, day, year, hour, minute] = match;
-  return `${year}-${month}-${day}T${hour}:${minute}:00${DEFAULT_TIMEZONE_OFFSET}`;
 }
 
 function mapWorldCupStatus(game: UnknownRecord) {
@@ -206,7 +195,12 @@ export function normalizeWorldCupGame({
   const homeTeam = stringValue(rawData.home_team_name_en) || homeTeamInfo?.nameEn || 'Local';
   const awayTeam = stringValue(rawData.away_team_name_en) || awayTeamInfo?.nameEn || 'Visitante';
   const stadium = stadiumsById.get(stringValue(rawData.stadium_id));
-  const kickoffAt = parseWorldCupDate(rawData.local_date);
+  const venueTimeZone = resolveVenueTimeZone({
+    stadium: stadium?.fifaName ?? stadium?.nameEn ?? null,
+    city: stadium?.cityEn ?? null,
+    country: stadium?.countryEn ?? null,
+  });
+  const kickoffAt = parseVenueLocalDate(rawData.local_date, venueTimeZone);
   const status = mapWorldCupStatus(rawData);
   const stageType = stringValue(rawData.type);
   const group = stringValue(rawData.group);
@@ -224,6 +218,7 @@ export function normalizeWorldCupGame({
     awayFlag: awayTeamInfo?.flag ?? null,
     kickoffAt,
     stadium: stadium?.fifaName ?? stadium?.nameEn ?? null,
+    venueTimeZone,
     stageLabel,
     status,
     homeScore: numberValue(rawData.home_score),
@@ -234,19 +229,22 @@ export function normalizeWorldCupGame({
 
 export function worldCupGameToMatch(game: NormalizedWorldCup26Game): Match {
   const live = game.status === 'live';
+  const homeLabel = translateTeamName(game.homeTeam);
+  const awayLabel = translateTeamName(game.awayTeam);
 
   return {
     id: game.slug,
     externalApiId: game.externalApiId,
-    home: game.homeTeam,
-    away: game.awayTeam,
+    home: homeLabel || game.homeTeam,
+    away: awayLabel || game.awayTeam,
     homeFlag: game.homeFlag ?? game.homeTeam.slice(0, 3).toUpperCase(),
     awayFlag: game.awayFlag ?? game.awayTeam.slice(0, 3).toUpperCase(),
     homeFlagUrl: game.homeFlag,
     awayFlagUrl: game.awayFlag,
-    date: live ? 'EN VIVO' : formatMatchDate(game.kickoffAt),
-    time: live ? 'Ahora' : formatMatchTime(game.kickoffAt),
+    date: live ? 'EN VIVO' : formatMatchDate(game.kickoffAt, game.venueTimeZone),
+    time: live ? 'Ahora' : formatMatchTime(game.kickoffAt, game.venueTimeZone),
     stadium: game.stadium ?? 'Sede por confirmar',
+    venueTimeZone: game.venueTimeZone,
     group: game.stageLabel,
     winnerStake: 1,
     exactScoreStake: 2,

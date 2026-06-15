@@ -48,7 +48,7 @@ export function MatchCard({
       <div className="inicio-match-card__meta">
         <span>
           <Clock3 size={14} aria-hidden="true" />
-          {match.date} - {match.time}
+          {match.date} - {match.time}{match.live ? '' : ' - local'}
         </span>
         <span>
           <MapPin size={14} aria-hidden="true" />
@@ -90,7 +90,7 @@ export function MatchCard({
       </div>
 
       <Link className="inicio-primary-btn" href={href}>
-        Realizar prediccion
+        Apostar
       </Link>
     </article>
   );

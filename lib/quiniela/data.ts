@@ -4,6 +4,8 @@ import { getWorldCupMatches, worldCupGameToMatch } from '@/lib/worldcup/worldcup
 import { createOptionalServiceSupabaseClient } from '@/lib/supabase/service';
 import { buildScore, formatMatchDate, formatMatchTime } from './format';
 import { isPredictionOpen } from './rules';
+import { translateTeamName } from './team-names';
+import { resolveVenueTimeZone } from './venue-time';
 import type {
   DashboardMatch,
   ExistingPrediction,
@@ -59,20 +61,24 @@ const WORLD_CUP_FALLBACK_TIMEOUT_MS = 1800;
 
 function mapMatchRow(row: MatchRow): Match {
   const live = row.status === 'live';
+  const venueTimeZone = resolveVenueTimeZone({ stadium: row.stadium ?? null });
+  const homeLabel = translateTeamName(row.home_team);
+  const awayLabel = translateTeamName(row.away_team);
 
   return {
     id: row.slug,
     recordId: row.id,
     externalApiId: row.external_api_id,
-    home: row.home_team,
-    away: row.away_team,
+    home: homeLabel || row.home_team,
+    away: awayLabel || row.away_team,
     homeFlag: row.home_flag ?? row.home_team.slice(0, 3).toUpperCase(),
     awayFlag: row.away_flag ?? row.away_team.slice(0, 3).toUpperCase(),
     homeFlagUrl: null,
     awayFlagUrl: null,
-    date: live ? 'EN VIVO' : formatMatchDate(row.kickoff_at),
-    time: live ? 'Ahora' : formatMatchTime(row.kickoff_at),
+    date: live ? 'EN VIVO' : formatMatchDate(row.kickoff_at, venueTimeZone),
+    time: live ? 'Ahora' : formatMatchTime(row.kickoff_at, venueTimeZone),
     stadium: row.stadium ?? 'Sede por confirmar',
+    venueTimeZone,
     group: row.stage_label ?? 'Mundial 2026',
     winnerStake: row.winner_stake,
     exactScoreStake: row.exact_score_stake,
@@ -467,6 +473,22 @@ export async function getMatchBySlug(slug: string) {
     .maybeSingle();
 
   if (!error && data) {
+    const worldCupMatches = await getWorldCupMatchesWithTimeout();
+    const liveMatch = worldCupMatches.find(
+      (match) => match.id === slug || match.externalApiId === data.external_api_id
+    );
+
+    if (liveMatch) {
+      return {
+        ...liveMatch,
+        recordId: data.id,
+        winnerStake: data.winner_stake,
+        exactScoreStake: data.exact_score_stake,
+        status: data.status,
+        score: buildScore(data.home_score, data.away_score) ?? liveMatch.score,
+      };
+    }
+
     return mapMatchRow(data);
   }
 
@@ -823,7 +845,7 @@ export async function getViewerPredictionHistory(
   );
 
   return data
-    .map((item) => {
+    .map<PredictionHistoryItem | null>((item) => {
       const match = Array.isArray(item.matches) ? item.matches[0] : item.matches;
 
       if (!match) {
@@ -847,11 +869,18 @@ export async function getViewerPredictionHistory(
       return {
         id: item.id,
         matchSlug: match.slug,
-        matchLabel: `${match.home_team} vs ${match.away_team}`,
+        matchLabel: `${translateTeamName(match.home_team) || match.home_team} vs ${translateTeamName(match.away_team) || match.away_team}`,
         stadium: match.stadium ?? 'Sede por confirmar',
-        date: formatMatchDate(match.kickoff_at),
-        time: formatMatchTime(match.kickoff_at),
+        date: formatMatchDate(
+          match.kickoff_at,
+          resolveVenueTimeZone({ stadium: match.stadium ?? null })
+        ),
+        time: formatMatchTime(
+          match.kickoff_at,
+          resolveVenueTimeZone({ stadium: match.stadium ?? null })
+        ),
         kickoffAt: match.kickoff_at,
+        venueTimeZone: resolveVenueTimeZone({ stadium: match.stadium ?? null }),
         status: match.status,
         betMode: item.bet_mode,
         predictedWinner: item.predicted_winner,
